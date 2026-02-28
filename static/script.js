@@ -144,45 +144,46 @@ function renderResults(results) {
     const resultsArea = document.getElementById("resultsArea");
 
     resultsArea.innerHTML = results.map(item => {
-        // FIXED: We now explicitly encode single quotes (%27) so apostrophes don't break the buttons!
+        // Safe score extraction
+        let score = 0;
+        if (item.engagement_prediction) {
+            score = typeof item.engagement_prediction === 'object' 
+                ? (item.engagement_prediction.final_score || 0) 
+                : item.engagement_prediction;
+        }
+        
         const encodedContent = encodeURIComponent(item.content).replace(/'/g, "%27");
 
         let cardHTML = `
-            <div class="result-card">
-                <h3>${item.platform}</h3>
+            <div class="result-card" style="margin-bottom: 25px; position: relative;">
+                <h3 style="margin-bottom: 15px;">${item.platform}</h3>
                 <button class="copy-trigger" onclick="copyText(this, decodeURIComponent('${encodedContent}'))">Copy Text</button>
-                <div class="result-content">${item.content.replace(/\n/g, "<br>")}</div>
+                <div class="result-content" style="margin-bottom: 20px;">${item.content.replace(/\n/g, "<br>")}</div>
                 
-                <div style="margin-top:25px; padding-top:15px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                    <span style="font-weight:600; color: var(--primary); font-size: 14px;">
-                        🔥 Predicted Engagement: ${item.engagement_prediction ? item.engagement_prediction.final_score : 'N/A'}%
-                    </span>
+                <div style="margin-top:25px; padding-top:20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
                     
-                    <div class="feedback-controls" style="display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted);">
-                        <span>✨ Did this response hit the mark?</span>
-                        <button onclick="sendFeedback(this, '${item.platform}', decodeURIComponent('${encodedContent}'), 100)" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text); padding: 6px 16px; border-radius: 20px; cursor: pointer; transition: 0.2s; font-weight: 500;" onmouseover="this.style.borderColor='var(--success)'; this.style.color='var(--success)';" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text)';">Yes</button>
-                        <button onclick="sendFeedback(this, '${item.platform}', decodeURIComponent('${encodedContent}'), 10)" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text); padding: 6px 16px; border-radius: 20px; cursor: pointer; transition: 0.2s; font-weight: 500;" onmouseover="this.style.borderColor='#ff6b6b'; this.style.color='#ff6b6b';" onmouseout="this.style.borderColor='var(--border)'; this.style.color='var(--text)';">No</button>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <span style="font-weight:600; color: #3b82f6; font-size: 14px; white-space: nowrap;">
+                            🔥 Predicted Engagement: ${score}%
+                        </span>
+                        ${score > 0 && score < 75 ? `
+                            <button class="launch-btn" 
+                                    onclick="reOptimize(this, '${item.platform}', decodeURIComponent('${encodedContent}'))" 
+                                    style="padding: 4px 10px; font-size: 11px; background: transparent; border: 1px solid #ff6b6b; color: #ff6b6b; width: fit-content;">
+                                🔄 Optimize Again
+                            </button>` : ''}
+                    </div>
+
+                    <div class="feedback-controls" style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 12px; color: var(--muted);">Useful?</span>
+                        <button onclick="sendFeedback(this, '${item.platform}', decodeURIComponent('${encodedContent}'), 100)" class="platform-chip" style="padding: 5px 15px; margin:0; cursor: pointer;">Yes</button>
+                        <button onclick="sendFeedback(this, '${item.platform}', decodeURIComponent('${encodedContent}'), 10)" class="platform-chip" style="padding: 5px 15px; margin:0; cursor: pointer;">No</button>
                     </div>
                 </div>
-        `;
-
-        if (item.image_prompt) {
-            cardHTML += `
-                <div style="margin-top: 25px; padding: 20px; background: rgba(0,0,0,0.3); border-left: 3px solid var(--primary); border-radius: 12px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <strong style="color: var(--primary); font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">📸 Art Director's Image Prompt</strong>
-                        <button style="background: transparent; border: 1px solid var(--border); color: var(--muted); padding: 4px 10px; border-radius: 6px; font-size: 11px; cursor: pointer;" onclick="copyText(this, \`${item.image_prompt.replace(/`/g, '\\`')}\`)">Copy Prompt</button>
-                    </div>
-                    <p style="font-family: monospace; font-size: 13px; color: var(--muted); margin: 0; line-height: 1.5;">${item.image_prompt}</p>
-                </div>
-            `;
-        }
-
-        cardHTML += `</div>`;
+            </div>`;
         return cardHTML;
     }).join("");
 }
-
 // RLHF Feedback Submission
 async function sendFeedback(btn, platform, content, newScore) {
     const originalText = btn.innerText;
@@ -235,3 +236,42 @@ document.getElementById("topicInput").addEventListener("keypress", function(even
         processPipeline();      // Triggers your generation function
     }
 });
+async function reOptimize(btn, platform, oldContent) {
+    const originalText = btn.innerText;
+    btn.innerText = "Refining...";
+    btn.disabled = true;
+
+    // We send a more specific "Topic" that includes the old content for refinement
+    const refinementTopic = `URGENT REFINEMENT: The following content scored low on engagement. Please rewrite it to be significantly more compelling while keeping the core message: "${oldContent}"`;
+
+    try {
+        const response = await fetch("/generate", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                topic: refinementTopic,
+                audience: document.getElementById("audienceInput").value,
+                goal: "High Engagement",
+                content_type: currentMode,
+                model: "nvidia", // Staying with the free/stable Llama 3.1
+                platforms: [platform]
+            })
+        });
+
+        const newData = await response.json();
+        
+        if (newData.error) throw new Error(newData.error);
+
+        // Find the specific card and update its content
+        const card = btn.closest('.result-card');
+        card.style.borderColor = "var(--primary)";
+        card.querySelector('.result-content').innerHTML = newData[0].content.replace(/\n/g, "<br>");
+        card.querySelector('span').innerHTML = `🔥 New Predicted Engagement: ${newData[0].engagement_prediction.final_score}%`;
+        
+        btn.remove(); // Remove the button after successful optimization
+    } catch (error) {
+        console.error("Optimization failed", error);
+        btn.innerText = "Error: Try Again";
+        btn.disabled = false;
+    }
+}
