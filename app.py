@@ -4,6 +4,7 @@ import httpx
 from flask import Flask, render_template, request, jsonify
 from openai import OpenAI
 from dotenv import load_dotenv
+from httpx import Limits
 
 # Import your custom pipeline and data helpers from agents.py
 from agents import MultiAgentPipeline, load_data, save_data
@@ -26,9 +27,14 @@ if not NVIDIA_API_KEY or not OPENAI_API_KEY:
 
 # ================== AI PROVIDER SETUP ==================
 
-# Create a custom HTTP client that ignores system proxies.
-# This prevents: "TypeError: Client.__init__() got an unexpected keyword argument 'proxies'"
-http_client = httpx.Client(proxies={})
+# Optimized HTTP Client for Local Windows stability AND Render Cloud HTTPS compatibility
+# 'limits' prevents Windows Socket Error 10038 and manages cloud memory
+http_client = httpx.Client(
+    proxies={}, 
+    timeout=60.0,
+    limits=Limits(max_connections=10, max_keepalive_connections=5),
+    verify=True
+)
 
 ai_providers = {
     "nvidia": {
@@ -78,6 +84,7 @@ async def generate():
 
     try:
         # Executes Research, Writing, Critique, SEO, and Art Direction agents
+        # Timeout set to 120s to allow Agent 5 (Art Director) to finish complex prompts
         results = await asyncio.wait_for(
             pipeline.run_full_pipeline(
                 data.get("platforms", ["LinkedIn"])
@@ -87,7 +94,7 @@ async def generate():
         return jsonify(results)
 
     except asyncio.TimeoutError:
-        return jsonify({"error": "Pipeline timed out. Try fewer platforms."}), 500
+        return jsonify({"error": "Pipeline timed out. The agents took too long to synchronize."}), 500
     except Exception as e:
         print(f"❌ PIPELINE ERROR: {str(e)}")
         return jsonify({"error": f"Generation failed: {str(e)}"}), 500
@@ -121,5 +128,5 @@ def feedback():
         return jsonify({"error": "Post not found in database"}), 404
 
 if __name__ == "__main__":
-    # Local dev uses debug=True; Render uses gunicorn in requirements.txt
+    # Local dev uses debug=True; Render uses gunicorn configured in your project
     app.run(debug=True)
