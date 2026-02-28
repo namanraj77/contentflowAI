@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Flow AI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="logo">CONTENT FLOW AI</div>
+        <button class="launch-btn" style="padding: 10px 20px; font-size: 14px;" onclick="document.getElementById('workspace').scrollIntoView({behavior: 'smooth'})">Workspace</button>
+    </nav>
+
+    <header class="hero">
+        <h1>Content Intelligence<br>at Scale.</h1>
+        <p>A multi-agent autonomous pipeline trained on high-performance semantic data. Select your format, pick your platforms, and let the agents synchronize your brand voice.</p>
+    </header>
+
+    <main id="workspace" class="workspace-card">
+        <div class="section-header">
+            <h2>Workspace</h2>
+            <p>Define your intent and let the Critic Agent refine your drafts.</p>
+        </div>
+
+        <div class="type-toggle">
+            <button class="type-btn active" id="btnCaption" onclick="switchMode('caption')">Text Captions</button>
+            <button class="type-btn" id="btnScript" onclick="switchMode('script')">Video Scripts</button>
+        </div>
+
+        <label style="font-size: 12px; color: var(--muted); text-transform: uppercase; margin-bottom: 12px; display: block;">Target Platforms</label>
+        
+        <div class="platform-grid" id="captionPlatforms">
+            <label class="platform-chip"><input type="checkbox" value="LinkedIn" checked>LinkedIn</label>
+            <label class="platform-chip"><input type="checkbox" value="Twitter">Twitter</label>
+            <label class="platform-chip"><input type="checkbox" value="Instagram">Instagram</label>
+            <label class="platform-chip"><input type="checkbox" value="Facebook">Facebook</label>
+            <label class="platform-chip"><input type="checkbox" value="Threads">Threads</label>
+        </div>
+
+        <div class="platform-grid" id="scriptPlatforms" style="display: none;">
+            <label class="platform-chip"><input type="checkbox" value="Reels" checked>IG Reels</label>
+            <label class="platform-chip"><input type="checkbox" value="Shorts">YT Shorts</label>
+            <label class="platform-chip"><input type="checkbox" value="Long Form Video">YouTube Long Form</label>
+        </div>
+
+        <div class="main-input-group">
+            <input type="text" id="topicInput" placeholder="Enter your core topic (e.g. UAV Trajectory Data for Logistics)">
+            <button class="launch-btn" id="generateBtn" onclick="processPipeline()">Generate</button>
+        </div>
+
+        <div class="settings-row">
+            <select id="audienceInput">
+                <option value="Engineers">Engineers</option>
+                <option value="Founders">Founders</option>
+                <option value="GenZ">Creative Youth</option>
+            </select>
+            <select id="goalInput">
+                <option value="Engagement">High Engagement</option>
+                <option value="Conversion">Sales Conversion</option>
+                <option value="Awareness">Brand Awareness</option>
+            </select>
+        </div>
+
+        <div id="loader" class="loader">
+            <div style="margin-bottom: 10px;">🧠 AI Agents are Analyzing, Drafting, and Critiquing...</div>
+            <div style="font-size: 12px; opacity: 0.6;">(Semantic Reflection in progress)</div>
+        </div>
+
+        <div id="resultsArea" class="results-container"></div>
+
+        <div id="followUp" class="follow-up-box">
+            <h3>✨ Content Generated Successfully</h3>
+            <p style="color: var(--muted); margin-bottom: 20px;">Need content for another format or platform? Let the agents run another pass.</p>
+            <button class="launch-btn" style="background: transparent; border: 1px solid var(--primary);" onclick="document.getElementById('workspace').scrollIntoView({behavior: 'smooth'})">↑ Back to Workspace</button>
+        </div>
+    </main>
+
+    <footer style="text-align: center; padding: 60px; color: var(--muted); font-size: 13px;">
+        © 2026 CONTENT FLOW AI — ENGINE V4.2 PRO
+    </footer>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
