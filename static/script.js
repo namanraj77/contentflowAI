@@ -1,4 +1,44 @@
 /* ===============================
+   GSAP INITIAL LOAD ANIMATIONS
+================================= */
+document.addEventListener("DOMContentLoaded", () => {
+    // 1. Drop the hero title in from the top
+    gsap.from(".hero h1", { 
+        y: -40, 
+        opacity: 0, 
+        duration: 1, 
+        ease: "power3.out" 
+    });
+
+    // 2. Fade the hero paragraph in gently
+    gsap.from(".hero p", { 
+        y: 20, 
+        opacity: 0, 
+        duration: 1, 
+        delay: 0.2, 
+        ease: "power3.out" 
+    });
+
+    // 3. Scale up the workspace card
+    gsap.from(".workspace-card", { 
+        scale: 0.95, 
+        opacity: 0, 
+        duration: 0.8, 
+        delay: 0.4, 
+        ease: "power2.out" 
+    });
+
+    // 4. Pop the platform chips in one by one (Stagger effect)
+    gsap.from(".platform-chip", { 
+        opacity: 0, 
+        y: 15, 
+        stagger: 0.1, 
+        delay: 0.8, 
+        ease: "back.out(1.5)" 
+    });
+});
+
+/* ===============================
    MODE SWITCHING
 ================================= */
 let currentMode = "caption";
@@ -184,4 +224,14 @@ function copyText(btn, text) {
         btn.innerText = originalText;
         btn.style.color = '#9aa0a6';
     }, 2000);
-}
+}       
+/* ===============================
+   KEYBOARD CONTROLS
+================================= */
+document.getElementById("topicInput").addEventListener("keypress", function(event) {
+    // Check if the key pressed is the Enter key
+    if (event.key === "Enter") {
+        event.preventDefault(); // Stops the browser from reloading the page
+        processPipeline();      // Triggers your generation function
+    }
+});
