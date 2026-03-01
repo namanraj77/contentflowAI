@@ -4,6 +4,8 @@ import re
 import datetime
 import math
 import os
+import certifi
+from pymongo import MongoClient
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
@@ -11,6 +13,7 @@ load_dotenv()
 
 # ================= MONGODB CLOUD SETUP =================
 MONGO_URI = os.getenv("MONGO_URI")
+ca = certifi.where()
 try:
     mongo_client = MongoClient(MONGO_URI)
     db = mongo_client.content_flow
