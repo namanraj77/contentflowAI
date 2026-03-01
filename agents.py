@@ -6,7 +6,6 @@ import math
 import os
 import certifi
 from pymongo import MongoClient
-from pymongo import MongoClient
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -15,9 +14,13 @@ load_dotenv()
 MONGO_URI = os.getenv("MONGO_URI")
 ca = certifi.where()
 try:
-    mongo_client = MongoClient(MONGO_URI)
+    mongo_client = MongoClient(MONGO_URI,
+                               tlsCAFile=ca,
+                               tlsAllowInvalidCertificates=True,)
     db = mongo_client.content_flow
     posts_collection = db.posts
+    mongo_client.admin.command('ping')
+    print("✅ MongoDB Connected Successfully!")
 except Exception as e:
     print(f"MongoDB connection error: {e}")
     posts_collection = None
