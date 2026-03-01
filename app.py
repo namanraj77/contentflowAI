@@ -6,8 +6,8 @@ from openai import OpenAI
 from dotenv import load_dotenv
 from httpx import Limits
 
-# Import your custom pipeline and data helpers from agents.py
-from agents import MultiAgentPipeline, load_data, save_data
+# Import your custom pipeline and MongoDB collection from agents.py
+from agents import MultiAgentPipeline, posts_collection
 
 # ================== CONFIG & ENVIRONMENT ==================
 
@@ -28,7 +28,6 @@ if not NVIDIA_API_KEY or not OPENAI_API_KEY:
 # ================== AI PROVIDER SETUP ==================
 
 # Optimized HTTP Client for Local Windows stability AND Render Cloud HTTPS compatibility
-# 'limits' prevents Windows Socket Error 10038 and manages cloud memory
 http_client = httpx.Client(
     proxies={}, 
     timeout=60.0,
@@ -84,7 +83,6 @@ async def generate():
 
     try:
         # Executes Research, Writing, Critique, SEO, and Art Direction agents
-        # Timeout set to 120s to allow Agent 5 (Art Director) to finish complex prompts
         results = await asyncio.wait_for(
             pipeline.run_full_pipeline(
                 data.get("platforms", ["LinkedIn"])
@@ -104,29 +102,39 @@ async def generate():
 @app.route("/feedback", methods=["POST"])
 def feedback():
     """
-    Handles the 'Yes/No' feedback buttons from the UI.
-    Updates dataset.json to improve future RAG retrieval scores.
+    RLHF Cloud Update: Permanently saves human feedback to MongoDB.
     """
     data = request.json
     target_content = data.get("content")
     new_score = data.get("new_score") # 100 for 'Yes', 10 for 'No'
+    platform = data.get("platform", "Unknown")
     
-    existing_data = load_data()
-    updated = False
+    if posts_collection is None:
+        return jsonify({"error": "Database not connected"}), 500
 
-    for post in existing_data:
-        if post.get("content") == target_content:
-            post["predicted_engagement"] = new_score
-            updated = True
-            break 
+    try:
+        # Look for the exact post. If found, update its score.
+        result = posts_collection.update_one(
+            {"content": target_content},
+            {"$set": {"predicted_engagement": new_score}}
+        )
 
-    if updated:
-        save_data(existing_data)
-        print(f"✅ RLHF: Human Feedback recorded. New score for RAG: {new_score}")
-        return jsonify({"status": "feedback updated"})
-    else:
-        return jsonify({"error": "Post not found in database"}), 404
+        # If the post wasn't in the database yet (freshly generated), insert it!
+        if result.matched_count == 0:
+            posts_collection.insert_one({
+                "content": target_content,
+                "platform": platform,
+                "predicted_engagement": new_score
+            })
+            print("✅ RLHF: New generated post saved to cloud database.")
+        else:
+            print(f"✅ RLHF: Existing post updated with score {new_score}.")
+
+        return jsonify({"status": "feedback updated successfully"})
+        
+    except Exception as e:
+        print(f"❌ Database error: {e}")
+        return jsonify({"error": "Failed to save feedback"}), 500
 
 if __name__ == "__main__":
-    # Local dev uses debug=True; Render uses gunicorn configured in your project
     app.run(debug=True)

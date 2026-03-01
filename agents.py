@@ -3,32 +3,50 @@ import json
 import re
 import datetime
 import math
+import os
+from pymongo import MongoClient
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# ================= MONGODB CLOUD SETUP =================
+MONGO_URI = os.getenv("MONGO_URI")
+try:
+    mongo_client = MongoClient(MONGO_URI)
+    db = mongo_client.content_flow
+    posts_collection = db.posts
+except Exception as e:
+    print(f"MongoDB connection error: {e}")
+    posts_collection = None
 
 # ================= DATA LAYER & ANALYTICS =================
 def load_data():
-    try:
-        with open("dataset.json", "r", encoding="utf-8") as f:
-            return json.load(f)
-    except:
-        return []
-
-def save_data(data):
-    with open("dataset.json", "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    """Fetches RAG baseline data directly from MongoDB Cloud"""
+    if posts_collection is not None:
+        try:
+            # We exclude '_id' so the output perfectly matches your old JSON format
+            return list(posts_collection.find({}, {"_id": 0}))
+        except Exception as e:
+            print(f"MongoDB read error: {e}")
+            return []
+    return []
 
 def log(msg):
     print(f"[PIPELINE] {msg}", flush=True)
 
 def record_analytics(topic, platform, content, score):
-    data = load_data()
-    data.append({
-        "topic": topic,
-        "platform": platform,
-        "content": content,
-        "predicted_engagement": score,
-        "timestamp": datetime.datetime.now().isoformat()
-    })
-    save_data(data)
+    """Saves generated content to MongoDB for future RAG"""
+    if posts_collection is not None:
+        try:
+            posts_collection.insert_one({
+                "topic": topic,
+                "platform": platform,
+                "content": content,
+                "predicted_engagement": score,
+                "timestamp": datetime.datetime.now().isoformat()
+            })
+        except Exception as e:
+            print(f"MongoDB write error: {e}")
 
 # ================= MATH & RULES ENGINE =================
 def cosine_similarity(vec1, vec2):
